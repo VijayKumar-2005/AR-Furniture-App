@@ -2,6 +2,7 @@ import 'package:ar/cart_page.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'ar_screen.dart';
+import 'database_handler/database_service.dart';
 
 class FurnitureListScreen extends StatefulWidget {
   final CameraDescription camera;
@@ -14,7 +15,7 @@ class FurnitureListScreen extends StatefulWidget {
 
 class _FurnitureListScreenState extends State<FurnitureListScreen> {
   final List<Map<String, dynamic>> cart = [];
-
+  double totalPrice = 0;
   final List<Map<String, dynamic>> furnitureItems = [
     {
       'image': 'Images/furniture1.png',
@@ -151,8 +152,48 @@ class _FurnitureListScreenState extends State<FurnitureListScreen> {
     },
   ];
 
-  double get totalPrice =>
-      cart.fold(0, (sum, item) => sum + (item['price'] as double));
+  @override
+  void initState() {
+    super.initState();
+    _loadCartFromHive();
+  }
+
+  Future<void> _loadCartFromHive() async {
+    await DataBaseHandler.instance.init('furnitureCartBox');
+    final storedCart = DataBaseHandler.instance.getData('cartItems');
+
+    if (storedCart != null && storedCart is List) {
+      final loadedCart = List<Map<String, dynamic>>.from(storedCart);
+      double price = 0;
+      for (var item in loadedCart) {
+        price += (item['price'] as double);
+      }
+
+      setState(() {
+        cart.addAll(loadedCart);
+        totalPrice = price;
+      });
+    }
+  }
+
+  Future<void> _saveCartToHive() async {
+    await DataBaseHandler.instance.putData('cartItems', cart);
+    double price = 0;
+    for (var item in cart) {
+      price += (item['price'] as double);
+    }
+    totalPrice = price;
+    await DataBaseHandler.instance.putData('totalPrice', totalPrice);
+  }
+
+  Future<void> _clearCart() async {
+    setState(() {
+      cart.clear();
+      totalPrice = 0;
+    });
+    await DataBaseHandler.instance.putData('cartItems', []);
+    await DataBaseHandler.instance.putData('totalPrice', 0.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -292,10 +333,11 @@ class _FurnitureListScreenState extends State<FurnitureListScreen> {
                           elevation: 3,
                           padding: const EdgeInsets.symmetric(vertical: 6),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           setState(() {
                             cart.add(item);
                           });
+                          await _saveCartToHive();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('${item['name']} added to cart.'),
@@ -324,19 +366,14 @@ class _FurnitureListScreenState extends State<FurnitureListScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             GestureDetector(
-              onTap: () {
-                setState(() {
-                  cart.clear();
-                });
-              },
-              child: Icon(Icons.remove_shopping_cart_outlined,size: 25,color: Colors.red,),
+              onTap: _clearCart,
+              child: const Icon(Icons.remove_shopping_cart_outlined, size: 25, color: Colors.red),
             ),
             Text(
               'Items in cart: ${cart.length}',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Text(
                   'Total: \$${totalPrice.toStringAsFixed(2)}',
