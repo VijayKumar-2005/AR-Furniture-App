@@ -9,10 +9,7 @@ Welcome to the **AR Furniture App**! This Flutter application allows users to br
 - **Shopping Cart**: Add items to your cart, view the total price, and clear the cart when needed.
 - **Persistent Storage**: Cart data is saved locally using Hive, ensuring your selections are retained even after closing the app.
 
-## Screenshots
 
-![Home Screen](screenshots/home.png) | ![AR View](screenshots/ar.png) | ![Cart](screenshots/cart.png)
---- | --- | ---
 
 ## Getting Started
 
